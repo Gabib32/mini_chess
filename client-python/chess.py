@@ -6,6 +6,7 @@ chess_board = []
 plyNumber = 1
 possible_moves = []
 moves_stack = []
+evaluated_moves = []
 
 def get_intDepth():
 	global plyNumber
@@ -183,7 +184,7 @@ def chess_eval():
 	# with reference to the state of the game, return the the evaluation score of the side on move - note that positive means an advantage while negative means a disadvantage
 
 	score = 0
-	king_pts = 100
+	king_pts = 1000
 	queen_pts = 9
 	rook_pts = 5
 	bishop_pts = 3
@@ -383,6 +384,7 @@ def convert_move(start_row, start_column, end_row, end_column):
 	
 def chess_movesShuffled():
 	# with reference to the state of the game, determine the possible moves and shuffle them before returning them- note that you can call the chess_moves() function in here
+
 	chess_moves()
 	shuffled_moves = possible_moves
 	random.shuffle(shuffled_moves)
@@ -393,8 +395,32 @@ def chess_movesShuffled():
 def chess_movesEvaluated():
 	# with reference to the state of the game, determine the possible moves and sort them in order of an increasing evaluation score before returning them - note that you can call the chess_movesShuffled() function in here
 
-		
-	return []
+#	global evaluated_moves
+
+	moves = chess_movesShuffled()
+	scores = []
+
+	for move in moves:
+		chess_move(move)
+		scores.append(chess_eval())
+		chess_undo()
+
+	
+	#print("scores: ", scores)
+	#print("FIRST: ", scores[0])
+#	evaluated_moves = zip(moves, scores)
+#	sorted(evaluated_moves, key=lambda top:evaluated_moves[2])
+#	evaluated_moves.sort(key=lambda tup:evaluated_moves[0])
+#	print(evaluated_moves)
+
+#	print (evaluated_moves)
+	scores, moves = zip(*sorted(zip(scores, moves)))
+
+	scores, moves = (list(t) for t in zip(*sorted(zip(scores, moves))))
+#	print("scores: ", scores)
+#	print("moves: ", moves)
+
+	return moves
 
 def get_value_int(value):
 
@@ -424,6 +450,7 @@ def chess_move(strIn):
 
 	global chess_board
 	global moves_stack
+	global plyNumber
 
 	# Get the row and column position as numerical value
 	start = strIn.split("-")[0]
@@ -460,15 +487,7 @@ def chess_move(strIn):
 	
 		# Update who's turn it is
 		chess_board = []
-		strNext = get_strNext()
-		intDepth = get_intDepth()
-
-		if (strNext == 'W'):
-			strNext = 'B'
-		else:
-			strNext = 'W'
-			intDepth += 1
-		set_plyNumber(intDepth, strNext)
+		plyNumber += 1
 
 		# Move the piece to the correct position
 		for i in range (0, 6):
@@ -498,20 +517,30 @@ def chess_move(strIn):
 
 		# Append board state after move to the stack
 		moves_stack.append(chess_board)
-		if (len(moves_stack) >= 10):
-			del moves_stack[0]
 		return
 
 def chess_moveRandom():
 	# perform a random move and return it - one example output is given below - note that you can call the chess_movesShuffled() function as well as the chess_move() function in here
-	
-	return 'a2-a3\n'
 
+	shuffled_moves = chess_movesShuffled()
+	randomNum = random.randint(0, 5)
+
+	move = shuffled_moves[randomNum]
+	chess_move(move)
+	
+	return move
 
 def chess_moveGreedy():
 	# perform a greedy move and return it - one example output is given below - note that you can call the chess_movesEvaluated() function as well as the chess_move() function in here
-	
-	return 'a2-a3\n'
+
+	eval_moves = chess_movesEvaluated()
+	print(evaluated_moves)
+#	print(evaluated_moves[len(evaluated_moves) -1])
+
+	greedy_move = eval_moves[len(eval_moves) - 1]	
+	chess_move(greedy_move)
+
+	return greedy_move 
 
 
 def chess_moveNegamax(intDepth, intDuration):
@@ -537,8 +566,8 @@ def chess_undo():
 		moves_stack.pop()
 	
 		# Set the board to the previous move
-		chess_board = moves_stack.pop()
+		chess_board = moves_stack[len(moves_stack) - 1]
 
 		plyNumber -= 1
-
-	pass
+	else:
+		print("No moves on stack")
