@@ -36,19 +36,9 @@ def set_plyNumber(intDepth, strNext):
 
 def chess_reset():
 	global chess_board
-	global plyNumber
-
-	plyNumber = 1
-	intDepth = 1
-	strNext = 'W'	
 
 	chess_board = []
-	chess_board.append('kqbnr')
-	chess_board.append('ppppp')
-	chess_board.append('.....')
-	chess_board.append('.....')
-	chess_board.append('PPPPP')
-	chess_board.append('RNBQK')
+	chess_boardSet("1 W\nkqbnr\nppppp\n.....\n.....\nPPPPP\nRNBQK\n")
 
 	return
 
@@ -59,12 +49,11 @@ def chess_boardGet():
 
 	strOut = ''
 	strOut += str(intDepth) + ' ' + strNext + '\n'
-	strOut += chess_board[0] + '\n'
-	strOut += chess_board[1] + '\n'
-	strOut += chess_board[2] + '\n'
-	strOut += chess_board[3] + '\n'
-	strOut += chess_board[4] + '\n'
-	strOut += chess_board[5] + '\n'
+
+	for row in range(0, 6):
+		for column in range(0, 5):
+			strOut += chess_board[row][column]
+		strOut += '\n'
 
 	return strOut
 
@@ -78,28 +67,25 @@ def chess_boardSet(strIn):
 	intDepth = int(strIn[0].split(" ")[0])
 	strNext = strIn[0].split(" ")[1]	
 	set_plyNumber(intDepth, strNext)
-	
+	del strIn[0]
+
 	chess_board = []
-	chess_board.append(strIn[1])
-	chess_board.append(strIn[2])
-	chess_board.append(strIn[3])
-	chess_board.append(strIn[4])
-	chess_board.append(strIn[5])
-	chess_board.append(strIn[6])
+	for row in range(0, 6):
+		line = []
+		for column in range(0, 5):
+			line.append(strIn[row][column])
+		chess_board.append(line)
 	
 	moves_stack.append(chess_board)
 
 	return
 
 def chess_winner():
-	# determine the winner of the current state of the game and return '?' or '=' or 'W' or 'B' - note that we are returning a character and not a string
+	# determine the winner of the current state of the game and return '?' or '=' or 'W' or 'B' 
 
 	# Considered false until king found within board.
 	white_has_king = False
 	black_has_king = False
-
-	for i in chess_board:
-		print(i)
 
 	for row in chess_board:
 		if 'K' in row:
@@ -474,12 +460,6 @@ def chess_move(strIn):
 
 	# If error checking passes, move the piece
 	else:
-		# Append board state to the stack
-#		print("ADD")
-#		for i in chess_board:
-#			print(i)
-#		print("")
-
 		# Get current board setup
 		old_board=chess_boardGet().split('\n')
 		moves_stack.append(old_board)
