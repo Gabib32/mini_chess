@@ -6,7 +6,6 @@ chess_board = []
 plyNumber = 1
 possible_moves = []
 moves_stack = []
-evaluated_moves = []
 
 def get_intDepth():
 	global plyNumber
@@ -38,7 +37,6 @@ def set_plyNumber(intDepth, strNext):
 def chess_reset():
 	global chess_board
 	global plyNumber
-	global moves_stack
 
 	plyNumber = 1
 	intDepth = 1
@@ -51,8 +49,6 @@ def chess_reset():
 	chess_board.append('.....')
 	chess_board.append('PPPPP')
 	chess_board.append('RNBQK')
-
-	moves_stack.append(chess_board)
 
 	return
 
@@ -102,20 +98,24 @@ def chess_winner():
 	white_has_king = False
 	black_has_king = False
 
+	for i in chess_board:
+		print(i)
+
 	for row in chess_board:
 		if 'K' in row:
 			white_has_king = True
-		elif 'k' in row:
+		if 'k' in row:
 			black_has_king = True	
-
-	if (plyNumber >= 80):
-		return '='
 
 	if (black_has_king == False):
 		return 'W'
+
 	elif (white_has_king == False):
 		return 'B'
 
+	if (plyNumber >= 81):
+		return '='
+	
 	return '?'
 
 def chess_isValid(intX, intY):
@@ -395,32 +395,25 @@ def chess_movesShuffled():
 def chess_movesEvaluated():
 	# with reference to the state of the game, determine the possible moves and sort them in order of an increasing evaluation score before returning them - note that you can call the chess_movesShuffled() function in here
 
-#	global evaluated_moves
-
 	moves = chess_movesShuffled()
 	scores = []
+	combined = []
 
 	for move in moves:
 		chess_move(move)
-		scores.append(chess_eval())
+		score = chess_eval()
+		scores.append(score)
+		combined.append([move, score])
 		chess_undo()
-
 	
-	#print("scores: ", scores)
-	#print("FIRST: ", scores[0])
-#	evaluated_moves = zip(moves, scores)
-#	sorted(evaluated_moves, key=lambda top:evaluated_moves[2])
-#	evaluated_moves.sort(key=lambda tup:evaluated_moves[0])
-#	print(evaluated_moves)
+	evaluated_moves = []
+	sorted_combined = sorted(combined, key=lambda tup: tup[1])
 
-#	print (evaluated_moves)
-	scores, moves = zip(*sorted(zip(scores, moves)))
+	evaluated_moves = []
+	for move in sorted_combined:
+		evaluated_moves.append(move[0])
 
-	scores, moves = (list(t) for t in zip(*sorted(zip(scores, moves))))
-#	print("scores: ", scores)
-#	print("moves: ", moves)
-
-	return moves
+	return evaluated_moves
 
 def get_value_int(value):
 
@@ -481,10 +474,17 @@ def chess_move(strIn):
 
 	# If error checking passes, move the piece
 	else:
+		# Append board state to the stack
+#		print("ADD")
+#		for i in chess_board:
+#			print(i)
+#		print("")
+
 		# Get current board setup
 		old_board=chess_boardGet().split('\n')
+		moves_stack.append(old_board)
 		del old_board[0]
-	
+
 		# Update who's turn it is
 		chess_board = []
 		plyNumber += 1
@@ -515,17 +515,16 @@ def chess_move(strIn):
 			else:
 				chess_board.append(old_board[i])
 
-		# Append board state after move to the stack
-		moves_stack.append(chess_board)
 		return
 
 def chess_moveRandom():
 	# perform a random move and return it - one example output is given below - note that you can call the chess_movesShuffled() function as well as the chess_move() function in here
 
 	shuffled_moves = chess_movesShuffled()
-	randomNum = random.randint(0, 5)
+	#randomNum = random.randint(0, 5)
+	#move = shuffled_moves[randomNum - 1]
 
-	move = shuffled_moves[randomNum]
+	move = shuffled_moves[0]
 	chess_move(move)
 	
 	return move
@@ -533,11 +532,9 @@ def chess_moveRandom():
 def chess_moveGreedy():
 	# perform a greedy move and return it - one example output is given below - note that you can call the chess_movesEvaluated() function as well as the chess_move() function in here
 
-	eval_moves = chess_movesEvaluated()
-	print(evaluated_moves)
-#	print(evaluated_moves[len(evaluated_moves) -1])
-
-	greedy_move = eval_moves[len(eval_moves) - 1]	
+	moves_eval = chess_movesEvaluated()
+	
+	greedy_move = moves_eval[0]
 	chess_move(greedy_move)
 
 	return greedy_move 
@@ -561,13 +558,9 @@ def chess_undo():
 	global moves_stack
 	global plyNumber
 
-	if (len(moves_stack) != 0 and len(moves_stack) != 1):
-		# Remove the current state of the board
-		moves_stack.pop()
-	
+	if (len(moves_stack) > 0):
 		# Set the board to the previous move
-		chess_board = moves_stack[len(moves_stack) - 1]
-
+		chess_board = moves_stack.pop()
 		plyNumber -= 1
 	else:
 		print("No moves on stack")
