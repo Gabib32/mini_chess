@@ -36,7 +36,9 @@ def set_plyNumber(intDepth, strNext):
 
 def chess_reset():
 	global chess_board
+	global moves_stack
 
+	moves_stack = []
 	chess_board = []
 	chess_boardSet("1 W\nkqbnr\nppppp\n.....\n.....\nPPPPP\nRNBQK\n")
 
@@ -60,7 +62,6 @@ def chess_boardGet():
 def chess_boardSet(strIn):
 	global chess_board
 	global plyNumber
-	global moves_stack
 
 	strIn = strIn.split('\n')
 
@@ -76,8 +77,6 @@ def chess_boardSet(strIn):
 			line.append(strIn[row][column])
 		chess_board.append(line)
 	
-	moves_stack.append(chess_board)
-
 	return
 
 def chess_winner():
@@ -406,18 +405,18 @@ def get_value_int(value):
 	# Strings need to be converted from unicode to int
 	value = value.lower()	
 	
-	if (value == 'a' or value == '1'):
+	if (value == 'a' or value == '6'):
+		value = 0
+	elif (value == 'b' or value == '5'):
 		value = 1
-	elif (value == 'b' or value == '2'):
+	elif (value == 'c' or value == '4'):
 		value = 2
-	elif (value == 'c' or value == '3'):
+	elif (value == 'd' or value == '3'):
 		value = 3
-	elif (value == 'd' or value == '4'):
+	elif (value == 'e' or value == '2'):
 		value = 4
-	elif (value == 'e' or value == '5'):
+	elif (value == '1'):
 		value = 5
-	elif (value == '6'):
-		value = 6
 	else:
 		print("Invalid column value\n")
 		return False
@@ -430,20 +429,21 @@ def chess_move(strIn):
 	global chess_board
 	global moves_stack
 	global plyNumber
-
+	
 	# Get the row and column position as numerical value
+	move = strIn
 	start = strIn.split("-")[0]
 	finish = strIn.split("-")[1]
 
-	start_column = get_value_int(start[0]) - 1
-	finish_column = get_value_int(finish[0]) - 1
+	start_column = get_value_int(start[0])
+	finish_column = get_value_int(finish[0])
 
-	start_row = 6 - get_value_int(start[1])
-	finish_row = 6 - get_value_int(finish[1])
+	start_row = get_value_int(start[1])
+	finish_row = get_value_int(finish[1])
 
 	# Get the value of the piece being moved
 	current_piece = chess_board[start_row][start_column]
-	
+
 	# Check to ensure move is in range
 	if not (chess_isValid(start_column, start_row)):
 		print("Invalid Move: start out of range\n")
@@ -460,40 +460,22 @@ def chess_move(strIn):
 
 	# If error checking passes, move the piece
 	else:
-		# Get current board setup
-		old_board=chess_boardGet().split('\n')
-		moves_stack.append(old_board)
-		del old_board[0]
-
 		# Update who's turn it is
-		chess_board = []
 		plyNumber += 1
 
+		# Add previous state to the stack for undo function
+		undo_piece = chess_board[finish_row][finish_column]
+		moves_stack.append((move, undo_piece, current_piece))
+	
+		# Check for promotion
+		if (current_piece == 'P' and finish_row == 0):
+			current_piece = 'Q'
+		elif (current_piece == 'p' and finish_row == 5):
+			current_piece = 'q'
+
 		# Move the piece to the correct position
-		for i in range (0, 6):
-			if (i == finish_row and finish_row != start_row):
-				if (current_piece == 'P' and finish_row == 0):
-					current_piece = 'Q'
-				elif (current_piece == 'p' and finish_row == 6):
-					current_piece = 'q'
-				new = old_board[finish_row][:finish_column] + current_piece + old_board[finish_row][finish_column + 1:]
-				chess_board.append(new)
-			elif (i == start_row and start_row != finish_row):
-				new = old_board[start_row][:start_column] + '.' + old_board[start_row][start_column + 1:]
-				chess_board.append(new)
-			elif ((i == start_row or i == finish_row) and start_row == finish_row):
-				new = ''
-				row = old_board[start_row]
-				for i in range(0, 5):
-					if i == start_column:
-						new += '.'
-					elif i == finish_column:
-						new += current_piece
-					else:
-						new += row[i]
-				chess_board.append(new)
-			else:
-				chess_board.append(old_board[i])
+		chess_board[finish_row][finish_column] = current_piece
+		chess_board[start_row][start_column] = '.'
 
 		return
 
@@ -538,9 +520,30 @@ def chess_undo():
 	global moves_stack
 	global plyNumber
 
+#	print("Before undo", chess_board)
+#	print("stack: ", moves_stack)
 	if (len(moves_stack) > 0):
-		# Set the board to the previous move
-		chess_board = moves_stack.pop()
+		tup = moves_stack.pop()
+		move = tup[0]
+	
+		undo_piece = tup[1]
+		current_piece = tup[2]
+	
+		finish = move.split("-")[0]
+		start = move.split("-")[1]
+
+		start_column = get_value_int(start[0])
+		finish_column = get_value_int(finish[0])
+	
+		start_row = get_value_int(start[1])
+		finish_row = get_value_int(finish[1])
+
+		# Update who's turn it is
 		plyNumber -= 1
+
+		# Move the piece to the correct position
+		chess_board[finish_row][finish_column] = current_piece
+		chess_board[start_row][start_column] = undo_piece
 	else:
 		print("No moves on stack")
+
