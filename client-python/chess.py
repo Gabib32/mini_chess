@@ -556,7 +556,6 @@ def chess_moveAlphabeta(intDepth, intDuration):
 			alpha = temp
 
 	chess_move(best)
-	print(chess_board)
 	return best
 	
 
