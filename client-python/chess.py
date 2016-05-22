@@ -1,4 +1,5 @@
 import random
+import sys
 
 ##########################################################
 
@@ -504,14 +505,79 @@ def chess_moveGreedy():
 
 def chess_moveNegamax(intDepth, intDuration):
 	# perform a negamax move and return it - one example output is given below - note that you can call the the other functions in here
+	best = ''
+	score = -sys.maxint - 1
+#	score = -100000
+	temp = 0
+
+	for move in chess_movesShuffled():
+		chess_move(move)
+		temp = -negaMax(intDepth - 1)
+		chess_undo()
 	
-	return 'a2-a3\n'
+		if (temp > score):
+			best = move
+			score = temp
+
+	chess_move(best)
+	return best
+	
+def negaMax(intDepth):
+	if (intDepth == 0 or chess_winner() != '?'):
+		return chess_eval()
+
+	score = -sys.maxint - 1
+	#score = -100000
+
+	for move in chess_movesShuffled():
+		chess_move(move)
+		score = max(score, -negaMax(intDepth - 1))
+		chess_undo()
+
+	return score
 
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
+	best = ''
+	#alpha = -100000
+	#beta = 100000
+	alpha = -sys.maxint - 1
+	beta = sys.maxint
+	temp = 0
+
+	for move in chess_movesEvaluated():
+		chess_move(move)
+		temp = -alphabeta(intDepth - 1, -beta, -alpha)
+		chess_undo()
+		
+		if (temp > alpha):
+			best = move
+			alpha = temp
+
+	chess_move(best)
+	print(chess_board)
+	return best
 	
-	return 'a2-a3\n'
+
+def alphabeta(intDepth, alpha, beta):
+	if ((intDepth == 0) or (chess_winner() != '?')):
+		return chess_eval()
+
+	score = -sys.maxint - 1
+	#score = -100000	
+
+	for move in chess_movesEvaluated():
+		chess_move(move)
+		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
+		chess_undo()
+
+		alpha = max(alpha, score)
+		
+		if (alpha >= beta):
+			break
+
+	return score
 
 
 def chess_undo():
@@ -520,8 +586,7 @@ def chess_undo():
 	global moves_stack
 	global plyNumber
 
-#	print("Before undo", chess_board)
-#	print("stack: ", moves_stack)
+	# make sure the stack isn't empty
 	if (len(moves_stack) > 0):
 		tup = moves_stack.pop()
 		move = tup[0]
