@@ -1,5 +1,6 @@
 import random
 import sys
+import time
 
 ##########################################################
 
@@ -7,6 +8,7 @@ chess_board = []
 plyNumber = 1
 possible_moves = []
 moves_stack = []
+transpositions = {}
 
 def get_intDepth():
 	global plyNumber
@@ -38,11 +40,16 @@ def set_plyNumber(intDepth, strNext):
 def chess_reset():
 	global chess_board
 	global moves_stack
+	global transpositions
 
 	moves_stack = []
 	chess_board = []
 	chess_boardSet("1 W\nkqbnr\nppppp\n.....\n.....\nPPPPP\nRNBQK\n")
-
+#	evaluated_moves = chess_movesEvaluated()
+#	tups = []
+#	for move in evaluated_moves:
+#		tups.append((move, 0, 0, 0))
+#	transpositions = {chess_boardGet() : tups}
 	return
 
 def chess_boardGet():
@@ -539,45 +546,85 @@ def negaMax(intDepth):
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
+	
+	move_limit = (int(time.time() * 1000) + intDuration)
 	best = ''
 	#alpha = -100000
 	#beta = 100000
 	alpha = -sys.maxint - 1
 	beta = sys.maxint
 	temp = 0
+	timer = True
 
-	for move in chess_movesEvaluated():
-		chess_move(move)
-		temp = -alphabeta(intDepth - 1, -beta, -alpha)
-		chess_undo()
-		
-		if (temp > alpha):
-			best = move
-			alpha = temp
+	curDepth = intDepth
+	if (intDepth == -1):
+		curDepth = 2
+		intDepth = 1000
+
+	while (curDepth <= intDepth):
+#		print("cur: ", curDepth, "int: ", intDepth)
+		for move in chess_movesEvaluated():
+#			print("move:", move)
+			chess_move(move)
+			temp = -alphabeta(curDepth - 1, -beta, -alpha)
+			chess_undo()
+			
+			if (temp > alpha):
+				best = move
+				alpha = temp
+			
+			if (int(time.time() * 1000) >= move_limit):
+#				print("really reached")
+				timer = False
+				break
+		if not timer:
+#			print("timeout reached")
+			break
+
+		curDepth += 1
+#		print("balls are deeper")
 
 	chess_move(best)
 	return best
 	
 
 def alphabeta(intDepth, alpha, beta):
+	global transpositions
+
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
 
 	score = -sys.maxint - 1
 	#score = -100000	
 
+	# get value from transposition table
+	current = chess_boardGet()
+	if current in transpositions:
+		if transpositions[current][0][3] > intDepth:
+#			print(transpositions[current])
+			return transpositions[current][0][1] 	
+
+	tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
 		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
 		chess_undo()
 
+		tups.append((move, score, 0, intDepth))
 		alpha = max(alpha, score)
 		
 		if (alpha >= beta):
 			break
 
-	return score
+	
+	# update transposition table	
+	transpositions[current] = sorted(tups, key=lambda x: x[1])
+	
+#	for i in transpositions:
+#		print i, ":", transpositions[i]
+#		print("")
 
+	return score
 
 def chess_undo():
 	# undo the last move and update the state of the game / your internal variables accordingly - note that you need to maintain an internal variable that keeps track of the previous history for this
