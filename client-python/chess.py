@@ -45,11 +45,7 @@ def chess_reset():
 	moves_stack = []
 	chess_board = []
 	chess_boardSet("1 W\nkqbnr\nppppp\n.....\n.....\nPPPPP\nRNBQK\n")
-#	evaluated_moves = chess_movesEvaluated()
-#	tups = []
-#	for move in evaluated_moves:
-#		tups.append((move, 0, 0, 0))
-#	transpositions = {chess_boardGet() : tups}
+
 	return
 
 def chess_boardGet():
@@ -177,16 +173,20 @@ def chess_eval():
 	# with reference to the state of the game, return the the evaluation score of the side on move - note that positive means an advantage while negative means a disadvantage
 
 	score = 0
-	king_pts = 1000
-	queen_pts = 9
-	rook_pts = 5
-	bishop_pts = 3
-	knight_pts = 3
-	pawn_pts = 1
+	king_pts = 1000000
+	queen_pts = 100 
+	rook_pts = 50
+	bishop_pts = 50
+	knight_pts = 30
+	pawn_pts = 10
+	almost_promo_pawn = 75
 	
-	for i in range (0, 6):
-		for j in range(0, 5):
-			cur_piece = chess_board[i][j]
+#	for i in range (0, 6):
+#		for j in range(0, 5):
+	for row in chess_board:
+		for column in row:
+			cur_piece = column
+#			cur_piece = chess_board[row][column]
 			if (chess_isOwn(cur_piece)):
 				if (cur_piece == 'k' or cur_piece =='K'):
 					score += king_pts		
@@ -199,6 +199,9 @@ def chess_eval():
 				elif (cur_piece == 'k' or cur_piece =='K'):
 					score += knight_pts
 				elif (cur_piece == 'p' or cur_piece =='P'):
+#					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
+#						score += almost_promo_pawn
+#					else:
 					score += pawn_pts
 				else:
 					continue
@@ -215,7 +218,10 @@ def chess_eval():
                                 elif (cur_piece == 'k' or cur_piece =='K'):
                                         score -= knight_pts
                                 elif (cur_piece == 'p' or cur_piece =='P'):
-                                        score -= pawn_pts
+#					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
+#						score -= almost_promo_pawn
+#					else:
+					score -= pawn_pts
                                 else:
                                         continue
 	return score
@@ -513,8 +519,8 @@ def chess_moveGreedy():
 def chess_moveNegamax(intDepth, intDuration):
 	# perform a negamax move and return it - one example output is given below - note that you can call the the other functions in here
 	best = ''
-	score = -sys.maxint - 1
-#	score = -100000
+#	score = -sys.maxint - 1
+	score = -100000
 	temp = 0
 
 	for move in chess_movesShuffled():
@@ -533,8 +539,8 @@ def negaMax(intDepth):
 	if (intDepth == 0 or chess_winner() != '?'):
 		return chess_eval()
 
-	score = -sys.maxint - 1
-	#score = -100000
+#	score = -sys.maxint - 1
+	score = -100000
 
 	for move in chess_movesShuffled():
 		chess_move(move)
@@ -546,25 +552,32 @@ def negaMax(intDepth):
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
-	
+
 	move_limit = (int(time.time() * 1000) + intDuration)
+	limit = int(time.time() + 1000 + 240000)
 	best = ''
-	#alpha = -100000
-	#beta = 100000
-	alpha = -sys.maxint - 1
-	beta = sys.maxint
+	alpha = -100000
+	beta = 100000
+#	alpha = -sys.maxint - 1
+#	beta = sys.maxint
 	temp = 0
 	timer = True
 
 	curDepth = intDepth
-	if (intDepth == -1):
+	if (intDepth < 0):
 		curDepth = 2
-		intDepth = 1000
+		intDepth = 1000	
+		intDuration = 7000
 
+	# Once timer gets to 4 minutes shorted single piece time limit	
+	if (int(time.time() * 1000) >= limit):
+		print("less than 1 min left")
+		intDuration = 3000
+	
 	while (curDepth <= intDepth):
-#		print("cur: ", curDepth, "int: ", intDepth)
+		print("cur: ", curDepth, "int: ", intDepth)
 		for move in chess_movesEvaluated():
-#			print("move:", move)
+			print("move:", move)
 			chess_move(move)
 			temp = -alphabeta(curDepth - 1, -beta, -alpha)
 			chess_undo()
@@ -574,16 +587,16 @@ def chess_moveAlphabeta(intDepth, intDuration):
 				alpha = temp
 			
 			if (int(time.time() * 1000) >= move_limit):
-#				print("really reached")
 				timer = False
 				break
 		if not timer:
-#			print("timeout reached")
+			print("timeout reached")
 			break
 
 		curDepth += 1
-#		print("balls are deeper")
+		print("Depth: ", curDepth)
 
+	print("score", best)	
 	chess_move(best)
 	return best
 	
@@ -594,14 +607,16 @@ def alphabeta(intDepth, alpha, beta):
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
 
-	score = -sys.maxint - 1
-	#score = -100000	
+#	score = -sys.maxint - 1
+	score = -100000	
 
 	# get value from transposition table
-	current = chess_boardGet()
+	current = chess_boardGet()[3:]
+	print(current)
+
 	if current in transpositions:
 		if transpositions[current][0][3] > intDepth:
-#			print(transpositions[current])
+			print("Already in table")
 			return transpositions[current][0][1] 	
 
 	tups = []
@@ -616,13 +631,8 @@ def alphabeta(intDepth, alpha, beta):
 		if (alpha >= beta):
 			break
 
-	
 	# update transposition table	
 	transpositions[current] = sorted(tups, key=lambda x: x[1])
-	
-#	for i in transpositions:
-#		print i, ":", transpositions[i]
-#		print("")
 
 	return score
 
