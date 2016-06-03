@@ -553,6 +553,7 @@ def negaMax(intDepth):
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
 
+	intDuration = 7000
 	move_limit = (int(time.time() * 1000) + intDuration)
 	limit = int(time.time() + 1000 + 240000)
 	best = ''
@@ -564,25 +565,24 @@ def chess_moveAlphabeta(intDepth, intDuration):
 	timer = True
 
 	curDepth = intDepth
-	if (intDepth < 0):
+	if (intDepth <= 0):
 		curDepth = 2
 		intDepth = 1000	
-		intDuration = 7000
 
 	# Once timer gets to 4 minutes shorted single piece time limit	
 	if (int(time.time() * 1000) >= limit):
-		print("less than 1 min left")
+#		print("less than 1 min left")
 		intDuration = 3000
 	
 	while (curDepth <= intDepth):
-		print("cur: ", curDepth, "int: ", intDepth)
+#		print("cur: ", curDepth, "int: ", intDepth)
 		for move in chess_movesEvaluated():
-			print("move:", move)
+#			print("move:", move)
 			chess_move(move)
 			temp = -alphabeta(curDepth - 1, -beta, -alpha)
 			chess_undo()
 			
-			if (temp > alpha):
+			if (temp > alpha or best == ''):
 				best = move
 				alpha = temp
 			
@@ -594,7 +594,7 @@ def chess_moveAlphabeta(intDepth, intDuration):
 			break
 
 		curDepth += 1
-		print("Depth: ", curDepth)
+#		print("Depth: ", curDepth)
 
 	print("score", best)	
 	chess_move(best)
@@ -612,11 +612,10 @@ def alphabeta(intDepth, alpha, beta):
 
 	# get value from transposition table
 	current = chess_boardGet()[3:]
-	print(current)
 
 	if current in transpositions:
 		if transpositions[current][0][3] > intDepth:
-			print("Already in table")
+#			print("Already in table")
 			return transpositions[current][0][1] 	
 
 	tups = []

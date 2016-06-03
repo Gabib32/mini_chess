@@ -3,7 +3,7 @@ import random
 ##########################################################
 
 main_intZeromq = 54361 # CHANGE THIS - OPTIONAL
-main_strName = "notwinning" # CHANGE THIS - REQUIRED
+main_strName = "suicidal-knight" # CHANGE THIS - REQUIRED
 
 ##########################################################
 
