@@ -1,6 +1,7 @@
 import random
 import sys
 import time
+import bitstring
 
 ##########################################################
 
@@ -8,7 +9,12 @@ chess_board = []
 plyNumber = 1
 possible_moves = []
 moves_stack = []
-transpositions = {}
+zobrist_table = [None] * 6
+zobrist_black = get_long_rand()
+zobrist_white = get_long_rand()
+
+# constant indices
+piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 } 	
 
 def get_intDepth():
 	global plyNumber
@@ -40,7 +46,6 @@ def set_plyNumber(intDepth, strNext):
 def chess_reset():
 	global chess_board
 	global moves_stack
-	global transpositions
 
 	moves_stack = []
 	chess_board = []
@@ -549,12 +554,60 @@ def negaMax(intDepth):
 
 	return score
 
+def zobrist_init(): 
+	global zobrist_table
+
+	# 12 pieces x 30 spaces = 360
+	# For each piece at a potential spot in the board assign
+	# a bit string
+	for row in range(0, 6):
+		zobrist_table[row] = [None] * 5
+		for column in range(0, 5):
+			zobrist_table[row][column] = [None] * 12
+			for piece in range (0, 12):
+				zobrist_table[row][column][piece] = get_long_rand()
+			
+		
+def get_long_rand():
+	a = bitstring.BitArray(64)
+	a = random.getrandbits(32)
+	a += (a << 32) + random.getrandbits(32)
+
+	return a
+	
+def zobrist_calculate():
+	zobrist = bitstring.BitArray(64)
+	chess_board
+	if get_strNext == 'W':
+		zobrist ^= zobrist_white
+	else:
+		zobrist ^= zobrist_black
+
+	for row in range(0, 6):
+		for column in range(0, 5):
+			zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
+
+	return zobrist
+
+def zobrist_update(zorbist, move):
+#	h`= h xor z(source)xor z(source')xor z(destination)xor z(destination')xor z(side)xor z(side')
+
+	# Will get out bounds exception if empty. Put '.' for option 13
+		# get move source 
+		zobrist ^= zobrist_table[3][2][piece_lookup[chess_board[row][column]]]
+		# get move destination
+		zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
+		# side
+		if get_strNext == 'W':
+			zobrist ^= zobrist_white
+		else:
+			zobrist ^= zobrist_black
+
+	return zorbist
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
 
-	intDuration = 7000
-	move_limit = (int(time.time() * 1000) + intDuration)
 	limit = int(time.time() + 1000 + 240000)
 	best = ''
 	alpha = -100000
@@ -568,6 +621,10 @@ def chess_moveAlphabeta(intDepth, intDuration):
 	if (intDepth <= 0):
 		curDepth = 2
 		intDepth = 1000	
+		intDuration = 7000
+
+	move_limit = (int(time.time() * 1000) + intDuration)
+	print("dur: ", intDuration)
 
 	# Once timer gets to 4 minutes shorted single piece time limit	
 	if (int(time.time() * 1000) >= limit):
@@ -582,10 +639,12 @@ def chess_moveAlphabeta(intDepth, intDuration):
 			temp = -alphabeta(curDepth - 1, -beta, -alpha)
 			chess_undo()
 			
-			if (temp > alpha or best == ''):
+			if (temp > alpha or not best):
+#				print("TEMP: ", temp, " moves_stack ", moves_stack)
 				best = move
 				alpha = temp
-			
+#			if (temp < 0):
+#				print("Neg temp at ", move, " is ", temp)	
 			if (int(time.time() * 1000) >= move_limit):
 				timer = False
 				break
@@ -594,44 +653,38 @@ def chess_moveAlphabeta(intDepth, intDuration):
 			break
 
 		curDepth += 1
-#		print("Depth: ", curDepth)
+		print("Depth: ", curDepth)
 
-	print("score", best)	
+
+	print("score", best, "temp: ", temp)	
 	chess_move(best)
 	return best
 	
 
 def alphabeta(intDepth, alpha, beta):
-	global transpositions
 
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
 
+	# load from transposition table
+	
+
+
 #	score = -sys.maxint - 1
 	score = -100000	
 
-	# get value from transposition table
-	current = chess_boardGet()[3:]
-
-	if current in transpositions:
-		if transpositions[current][0][3] > intDepth:
-#			print("Already in table")
-			return transpositions[current][0][1] 	
-
-	tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
 		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
 		chess_undo()
 
-		tups.append((move, score, 0, intDepth))
 		alpha = max(alpha, score)
 		
 		if (alpha >= beta):
+#			print("found a breaking move ", alpha, " move ", move, " beta ", beta, " stack ", moves_stack)
 			break
 
-	# update transposition table	
-	transpositions[current] = sorted(tups, key=lambda x: x[1])
+	# store in transposition table
 
 	return score
 
@@ -667,3 +720,5 @@ def chess_undo():
 	else:
 		print("No moves on stack")
 
+# Init calls
+zobrist_init() 
