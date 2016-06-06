@@ -178,7 +178,7 @@ def chess_eval():
 	# with reference to the state of the game, return the the evaluation score of the side on move - note that positive means an advantage while negative means a disadvantage
 
 	score = 0
-	king_pts = 1000000
+	king_pts = 100000
 	queen_pts = 100 
 	rook_pts = 50
 	bishop_pts = 50
@@ -201,7 +201,7 @@ def chess_eval():
 					score += rook_pts
 				elif (cur_piece == 'b' or cur_piece =='B'):
 					score += bishop_pts
-				elif (cur_piece == 'k' or cur_piece =='K'):
+				elif (cur_piece == 'n' or cur_piece =='N'):
 					score += knight_pts
 				elif (cur_piece == 'p' or cur_piece =='P'):
 #					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
@@ -220,7 +220,7 @@ def chess_eval():
                                         score -= rook_pts
                                 elif (cur_piece == 'b' or cur_piece =='B'):
                                         score -= bishop_pts
-                                elif (cur_piece == 'k' or cur_piece =='K'):
+                                elif (cur_piece == 'n' or cur_piece =='N'):
                                         score -= knight_pts
                                 elif (cur_piece == 'p' or cur_piece =='P'):
 #					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
