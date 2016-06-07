@@ -9,6 +9,8 @@ chess_board = []
 plyNumber = 1
 possible_moves = []
 moves_stack = []
+transpositions = {}
+
 zobrist_table = [None] * 6
 zobrist_black = random.getrandbits(64) 
 zobrist_white = random.getrandbits(64)
@@ -515,7 +517,6 @@ def chess_moveGreedy():
 
 	return greedy_move 
 
-
 def chess_moveNegamax(intDepth, intDuration):
 	# perform a negamax move and return it - one example output is given below - note that you can call the the other functions in here
 	best = ''
@@ -571,7 +572,6 @@ def zobrist_calculate():
 		print "error generating random int"
 		zobrist_black = random.getrandbits(64) 
 		zobrist_white = random.getrandbits(64)
-		
 
 	if get_strNext == 'W':
 		zobrist ^= zobrist_white
@@ -582,11 +582,11 @@ def zobrist_calculate():
 		for column in range(0, 5):
 			cur_piece = chess_board[row][column]
 			if (cur_piece != '.'):
-				print(row, column, piece_lookup[cur_piece])
-				print(zobrist_table[row][column][piece_lookup[cur_piece]])
+#				print(row, column, piece_lookup[cur_piece])
+#				print(zobrist_table[row][column][piece_lookup[cur_piece]])
 				zobrist ^= zobrist_table[row][column][piece_lookup[cur_piece]]
-			else:
-				continue
+#			else:
+#				continue
 	return zobrist
 
 def zobrist_update(zobrist, move):
@@ -678,23 +678,32 @@ def alphabeta(intDepth, alpha, beta):
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
 
-	# load from transposition table
-
 	score = -100000	
 
+        # get value from transposition table
+        current = chess_boardGet()[3:]
+
+        if current in transpositions:
+                if transpositions[current][0][3] > intDepth:
+#                       print("Already in table")
+                        return transpositions[current][0][1]
+
+        tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
 		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
 		chess_undo()
 
 		alpha = max(alpha, score)
-		
+                tups.append((move, score, 0, intDepth))
+
 		if (alpha >= beta):
 			break
 
 	# store in transposition table
-	if (best <= alpha or best > beta):
-		zobrist_update(zobrist_calculate(), move)
+	zobrist_update(zobrist_calculate(), move)
+        transpositions[current] = sorted(tups, key=lambda x: x[1])
+
 
 	return score
 
