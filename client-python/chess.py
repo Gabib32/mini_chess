@@ -12,6 +12,9 @@ moves_stack = []
 transpositions = {}
 
 zobrist_key = None
+#zobrist = random.getrandbits(64)
+zobrist=14265310256587704851L
+zobrist=11111111111111111111L
 zobrist_table = [None] * 6
 zobrist_black = random.getrandbits(64) 
 zobrist_white = random.getrandbits(64)
@@ -20,14 +23,12 @@ zobrist_white = random.getrandbits(64)
 piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 }
 
 def get_intDepth():
-	global plyNumber
 
 	intDepth = 0
 	intDepth = (plyNumber / 2) + (plyNumber % 2)
 	return intDepth
 
 def get_strNext():
-	global plyNumber
 
 	strNext = ''
 	if (plyNumber % 2 == 0):
@@ -234,8 +235,6 @@ def chess_moves():
 	possible_moves = []
 	for row in range (0, 6):
 		for column in range (0, 5):
-#			print(chess_board)
-#			print(row, column, chess_board[row][column])
 			cur_piece = chess_board[row][column]
 			if chess_isOwn(cur_piece):
 				cur_row=row
@@ -562,32 +561,27 @@ def zobrist_init():
 			zobrist_table[row][column] = [None] * 13
 			for piece in range (0, 12):
 				zobrist_table[row][column][piece] = random.getrandbits(64)
+				
 	return
 			
 def zobrist_calculate():
-	global zobrist_white
-	global zobrist_black
+	# use cur_zobrist instead of global for scenarios when
+	# the same side goes multiple times - ex: undos
+	cur_zobrist = zobrist
 
-	zobrist = random.getrandbits(64)
-
-	if not zobrist_white or not zobrist_black:
-		print "error generating random int"
-		zobrist_black = random.getrandbits(64) 
-		zobrist_white = random.getrandbits(64)
-
-	if get_strNext == 'W':
-		zobrist ^= zobrist_white
+	if get_strNext() == 'W':
+		cur_zobrist ^= zobrist_white
 	else:
-		zobrist ^= zobrist_black
+		cur_zobrist ^= zobrist_black
 
 	for row in range(0, 6):
 		for column in range(0, 5):
 			cur_piece = chess_board[row][column]
 			if (cur_piece != '.'):
-				zobrist ^= zobrist_table[row][column][piece_lookup[cur_piece]]
-	return zobrist
+				cur_zobrist ^= zobrist_table[row][column][piece_lookup[cur_piece]]
+	return cur_zobrist
 
-def zobrist_update(zobrist, move):
+def zobrist_update(cur_zobrist, move):
 
 	move = move.rstrip()
 	start = move.split("-")[0]
@@ -604,27 +598,20 @@ def zobrist_update(zobrist, move):
 
 	if start_piece != '.':
 		# xor source	
-		zobrist ^= zobrist_table[start_row][start_column][piece_lookup[start_piece]]
-
+		cur_zobrist ^= zobrist_table[start_row][start_column][piece_lookup[start_piece]]
 		# xor destination
-		zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[start_piece]]
+		cur_zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[start_piece]]
 
 	# destination piece if not empty
 	if finish_piece != '.':
-		zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[finish_piece]]
+		cur_zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[finish_piece]]
 
 	# xor side
 	if get_strNext == 'W':
-		zobrist ^= zobrist_white
+		cur_zobrist ^= zobrist_white
 	else:
-		zobrist ^= zobrist_black
-
-	calc = zobrist_calculate()
-	if zobrist == calc:
-		print("same")
-	else:
-		print("dif: ", zobrist, calc)
-	return zobrist
+		cur_zobrist ^= zobrist_black
+	return cur_zobrist
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
@@ -679,9 +666,13 @@ def chess_moveAlphabeta(intDepth, intDuration):
 
 def alphabeta(intDepth, alpha, beta):
 	global zobrist_key
-
+	
 	if not zobrist_key:
 		zobrist_key = zobrist_calculate()
+
+	cur_zobrist = zobrist_key
+	for move in moves_stack:
+		cur_zobrist = zobrist_update(cur_zobrist, move[0])
 
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
@@ -689,15 +680,14 @@ def alphabeta(intDepth, alpha, beta):
 	score = -100000	
 
         # get value from transposition table
-#	zobrist_key = zobrist_calculate()
-        if zobrist_key in transpositions:
-                if transpositions[zobrist_key][0][2] > intDepth:
+	#zobrist_key = zobrist_calculate()
+        if cur_zobrist in transpositions:
+                if transpositions[cur_zobrist][0][2] > intDepth:
                         print("Already in table")
-                        return transpositions[zobrist_key][0][1]
+                        return transpositions[cur_zobrist][0][1]
         tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
-		zobrist_update(zobrist_calculate(), move)
 		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
 		chess_undo()
 
@@ -708,7 +698,7 @@ def alphabeta(intDepth, alpha, beta):
 			break
 
 	# store in transposition table
-        transpositions[zobrist_key] = sorted(tups, key=lambda x: x[1])
+        transpositions[cur_zobrist] = sorted(tups, key=lambda x: x[1])
 
 	return score
 
@@ -750,5 +740,25 @@ def chess_undo():
 	else:
 		print("No moves on stack")
 
+def test():
+	chess_reset()
+	zob = zobrist_calculate()
+	print(zob, get_strNext())
+	mover = 'b1-c3\n'
+	zob3 = zobrist_update(zob, mover)
+	chess_move(mover)
+	zob2 = zobrist_calculate()
+	print(zob2, zob3, str(zob2==zob3))
+
+#	mover2 = 'c3-b1\n'
+#	zob3 = zobrist_update(zob, mover2)
+#	chess_move(mover2)
+#	zob2 = zobrist_calculate()
+#	print(zob2, zob3, str(zob2==zob3))
+	
+	print(zob2, zob3, str(zob2==zob3))
+	print("")
+
 # Init calls
 zobrist_init() 
+#test()
