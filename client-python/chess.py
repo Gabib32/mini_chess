@@ -10,12 +10,11 @@ plyNumber = 1
 possible_moves = []
 moves_stack = []
 zobrist_table = [None] * 6
-zobrist_black = bitstring.BitArray(64)
-zobrist_white = bitstring.BitArray(64)
+zobrist_black = random.getrandbits(64) 
+zobrist_white = random.getrandbits(64)
 
 # constant indices
-piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11, '.':12 }
-#piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 }
+piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 }
 
 def get_intDepth():
 	global plyNumber
@@ -559,30 +558,20 @@ def zobrist_init():
 		for column in range(0, 5):
 			zobrist_table[row][column] = [None] * 13
 			for piece in range (0, 12):
-				zobrist_table[row][column][piece] = get_long_rand()
+				zobrist_table[row][column][piece] = random.getrandbits(64)
 	return
 			
-def get_long_rand():
-	rand = bitstring.BitArray(64)
-	rand = random.getrandbits(32)
-	rand += (rand << 32) + random.getrandbits(32)
-
-	return rand
-	
 def zobrist_calculate():
 	global zobrist_white
 	global zobrist_black
 
-	zobrist = bitstring.BitArray(64)
-#	zobrist = get_long_rand()
-	zobrist_white = get_long_rand()
-	zobrist_black = get_long_rand()
-
+	zobrist = random.getrandbits(64)
 
 	if not zobrist_white or not zobrist_black:
-		print  zobrist_white
-
-#	print(zobrist_white, zobrist_black)
+		print "error generating random int"
+		zobrist_black = random.getrandbits(64) 
+		zobrist_white = random.getrandbits(64)
+		
 
 	if get_strNext == 'W':
 		zobrist ^= zobrist_white
@@ -591,35 +580,47 @@ def zobrist_calculate():
 
 	for row in range(0, 6):
 		for column in range(0, 5):
-			zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
-			print(chess_board)
-			print(row, column, piece_lookup[chess_board[row][column]])
-			print(zobrist)
-			print(zobrist_table[row][column][piece_lookup[chess_board[row][column]]])
-
+			cur_piece = chess_board[row][column]
+			if (cur_piece != '.'):
+				print(row, column, piece_lookup[cur_piece])
+				print(zobrist_table[row][column][piece_lookup[cur_piece]])
+				zobrist ^= zobrist_table[row][column][piece_lookup[cur_piece]]
+			else:
+				continue
 	return zobrist
 
-def zobrist_update(zorbist, move):
-#	h`= h xor z(source)xor z(source')xor z(destination)xor z(destination')xor z(side)xor z(side')
+def zobrist_update(zobrist, move):
 
-	# Will get out bounds exception if empty. Put '.' for option 13
-		# get move source
-
+	move = move.rstrip()
 	start = move.split("-")[0]
 	finish = move.split("-")[1]
-	print("start: ", start, "finish: ", finish)
 
-	zobrist ^= zobrist_table[3][2][piece_lookup[chess_board[row][column]]]
+	start_column = get_value_int(start[0])
+	finish_column = get_value_int(finish[0])
 
-	# get move destination
-	zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
-	# side
+	start_row = get_value_int(start[1])
+	finish_row = get_value_int(finish[1])
+
+	start_piece = chess_board[start_row][start_column]
+	finish_piece = chess_board[finish_row][finish_column]
+
+	# xor source	
+	zobrist ^= zobrist_table[start_row][start_column][piece_lookup[start_piece]]
+
+	# xor destination
+	zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[start_piece]]
+
+	# destination piece if not empty
+	if finish_piece != '.':
+		zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[finish_piece]]
+
+	# xor side
 	if get_strNext == 'W':
 		zobrist ^= zobrist_white
 	else:
 		zobrist ^= zobrist_black
 
-	return zorbist
+	return zobrist
 
 def chess_moveAlphabeta(intDepth, intDuration):
 	# perform a alphabeta move and return it - one example output is given below - note that you can call the the other functions in here
@@ -667,7 +668,7 @@ def chess_moveAlphabeta(intDepth, intDuration):
 		print("Depth: ", curDepth)
 
 
-	print("score", best, "temp: ", temp)	
+	print("score", best)	
 	chess_move(best)
 	return best
 	
@@ -692,9 +693,8 @@ def alphabeta(intDepth, alpha, beta):
 			break
 
 	# store in transposition table
-#	if (best <= alpha or best > beta):
-#	zobrist_update(zobrist_calculate(), move)
-	zobrist_calculate()
+	if (best <= alpha or best > beta):
+		zobrist_update(zobrist_calculate(), move)
 
 	return score
 
