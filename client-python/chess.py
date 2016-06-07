@@ -11,6 +11,7 @@ possible_moves = []
 moves_stack = []
 transpositions = {}
 
+zobrist_key = None
 zobrist_table = [None] * 6
 zobrist_black = random.getrandbits(64) 
 zobrist_white = random.getrandbits(64)
@@ -234,7 +235,7 @@ def chess_moves():
 	for row in range (0, 6):
 		for column in range (0, 5):
 #			print(chess_board)
-			print(row, column, chess_board[row][column])
+#			print(row, column, chess_board[row][column])
 			cur_piece = chess_board[row][column]
 			if chess_isOwn(cur_piece):
 				cur_row=row
@@ -492,6 +493,7 @@ def chess_move(strIn):
 		# Move the piece to the correct position
 		chess_board[finish_row][finish_column] = current_piece
 		chess_board[start_row][start_column] = '.'
+#		zobrist_update(zobrist_calculate(), move)
 
 		return
 
@@ -582,11 +584,7 @@ def zobrist_calculate():
 		for column in range(0, 5):
 			cur_piece = chess_board[row][column]
 			if (cur_piece != '.'):
-#				print(row, column, piece_lookup[cur_piece])
-#				print(zobrist_table[row][column][piece_lookup[cur_piece]])
 				zobrist ^= zobrist_table[row][column][piece_lookup[cur_piece]]
-#			else:
-#				continue
 	return zobrist
 
 def zobrist_update(zobrist, move):
@@ -604,11 +602,12 @@ def zobrist_update(zobrist, move):
 	start_piece = chess_board[start_row][start_column]
 	finish_piece = chess_board[finish_row][finish_column]
 
-	# xor source	
-	zobrist ^= zobrist_table[start_row][start_column][piece_lookup[start_piece]]
+	if start_piece != '.':
+		# xor source	
+		zobrist ^= zobrist_table[start_row][start_column][piece_lookup[start_piece]]
 
-	# xor destination
-	zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[start_piece]]
+		# xor destination
+		zobrist ^= zobrist_table[finish_row][finish_column][piece_lookup[start_piece]]
 
 	# destination piece if not empty
 	if finish_piece != '.':
@@ -620,6 +619,11 @@ def zobrist_update(zobrist, move):
 	else:
 		zobrist ^= zobrist_black
 
+	calc = zobrist_calculate()
+	if zobrist == calc:
+		print("same")
+	else:
+		print("dif: ", zobrist, calc)
 	return zobrist
 
 def chess_moveAlphabeta(intDepth, intDuration):
@@ -674,6 +678,10 @@ def chess_moveAlphabeta(intDepth, intDuration):
 	
 
 def alphabeta(intDepth, alpha, beta):
+	global zobrist_key
+
+	if not zobrist_key:
+		zobrist_key = zobrist_calculate()
 
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
@@ -681,29 +689,26 @@ def alphabeta(intDepth, alpha, beta):
 	score = -100000	
 
         # get value from transposition table
-        current = chess_boardGet()[3:]
-
-        if current in transpositions:
-                if transpositions[current][0][3] > intDepth:
-#                       print("Already in table")
-                        return transpositions[current][0][1]
-
+#	zobrist_key = zobrist_calculate()
+        if zobrist_key in transpositions:
+                if transpositions[zobrist_key][0][2] > intDepth:
+                        print("Already in table")
+                        return transpositions[zobrist_key][0][1]
         tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
+		zobrist_update(zobrist_calculate(), move)
 		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
 		chess_undo()
 
 		alpha = max(alpha, score)
-                tups.append((move, score, 0, intDepth))
+                tups.append((move, score, intDepth))
 
 		if (alpha >= beta):
 			break
 
 	# store in transposition table
-	zobrist_update(zobrist_calculate(), move)
-        transpositions[current] = sorted(tups, key=lambda x: x[1])
-
+        transpositions[zobrist_key] = sorted(tups, key=lambda x: x[1])
 
 	return score
 
@@ -736,6 +741,12 @@ def chess_undo():
 		# Move the piece to the correct position
 		chess_board[finish_row][finish_column] = current_piece
 		chess_board[start_row][start_column] = undo_piece
+
+		# inverted move for zobrist function
+#		inverted_move = start + "-" + finish + "\n"
+#		zobrist_update(zobrist_calculate(), inverted_move)
+
+
 	else:
 		print("No moves on stack")
 
