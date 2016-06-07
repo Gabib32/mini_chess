@@ -10,11 +10,12 @@ plyNumber = 1
 possible_moves = []
 moves_stack = []
 zobrist_table = [None] * 6
-zobrist_black = get_long_rand()
-zobrist_white = get_long_rand()
+zobrist_black = bitstring.BitArray(64)
+zobrist_white = bitstring.BitArray(64)
 
 # constant indices
-piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 } 	
+piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11, '.':12 }
+#piece_lookup = {'P':0, 'N':1, 'B':2, 'R':3, 'Q':4, 'K':5, 'p': 6, 'n':7, 'b':8, 'r':9, 'q':10, 'k':11 }
 
 def get_intDepth():
 	global plyNumber
@@ -184,7 +185,6 @@ def chess_eval():
 	bishop_pts = 50
 	knight_pts = 30
 	pawn_pts = 10
-	almost_promo_pawn = 75
 	
 #	for i in range (0, 6):
 #		for j in range(0, 5):
@@ -204,9 +204,6 @@ def chess_eval():
 				elif (cur_piece == 'n' or cur_piece =='N'):
 					score += knight_pts
 				elif (cur_piece == 'p' or cur_piece =='P'):
-#					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
-#						score += almost_promo_pawn
-#					else:
 					score += pawn_pts
 				else:
 					continue
@@ -223,9 +220,6 @@ def chess_eval():
                                 elif (cur_piece == 'n' or cur_piece =='N'):
                                         score -= knight_pts
                                 elif (cur_piece == 'p' or cur_piece =='P'):
-#					if (cur_piece == 'p' and row >= 4) or (cur_piece =='P' and row <= 1):
-#						score -= almost_promo_pawn
-#					else:
 					score -= pawn_pts
                                 else:
                                         continue
@@ -238,6 +232,8 @@ def chess_moves():
 	possible_moves = []
 	for row in range (0, 6):
 		for column in range (0, 5):
+#			print(chess_board)
+			print(row, column, chess_board[row][column])
 			cur_piece = chess_board[row][column]
 			if chess_isOwn(cur_piece):
 				cur_row=row
@@ -524,7 +520,6 @@ def chess_moveGreedy():
 def chess_moveNegamax(intDepth, intDuration):
 	# perform a negamax move and return it - one example output is given below - note that you can call the the other functions in here
 	best = ''
-#	score = -sys.maxint - 1
 	score = -100000
 	temp = 0
 
@@ -533,7 +528,7 @@ def chess_moveNegamax(intDepth, intDuration):
 		temp = -negaMax(intDepth - 1)
 		chess_undo()
 	
-		if (temp > score):
+		if (temp > score or not best):
 			best = move
 			score = temp
 
@@ -544,7 +539,6 @@ def negaMax(intDepth):
 	if (intDepth == 0 or chess_winner() != '?'):
 		return chess_eval()
 
-#	score = -sys.maxint - 1
 	score = -100000
 
 	for move in chess_movesShuffled():
@@ -563,21 +557,33 @@ def zobrist_init():
 	for row in range(0, 6):
 		zobrist_table[row] = [None] * 5
 		for column in range(0, 5):
-			zobrist_table[row][column] = [None] * 12
+			zobrist_table[row][column] = [None] * 13
 			for piece in range (0, 12):
 				zobrist_table[row][column][piece] = get_long_rand()
+	return
 			
-		
 def get_long_rand():
-	a = bitstring.BitArray(64)
-	a = random.getrandbits(32)
-	a += (a << 32) + random.getrandbits(32)
+	rand = bitstring.BitArray(64)
+	rand = random.getrandbits(32)
+	rand += (rand << 32) + random.getrandbits(32)
 
-	return a
+	return rand
 	
 def zobrist_calculate():
+	global zobrist_white
+	global zobrist_black
+
 	zobrist = bitstring.BitArray(64)
-	chess_board
+#	zobrist = get_long_rand()
+	zobrist_white = get_long_rand()
+	zobrist_black = get_long_rand()
+
+
+	if not zobrist_white or not zobrist_black:
+		print  zobrist_white
+
+#	print(zobrist_white, zobrist_black)
+
 	if get_strNext == 'W':
 		zobrist ^= zobrist_white
 	else:
@@ -586,6 +592,10 @@ def zobrist_calculate():
 	for row in range(0, 6):
 		for column in range(0, 5):
 			zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
+			print(chess_board)
+			print(row, column, piece_lookup[chess_board[row][column]])
+			print(zobrist)
+			print(zobrist_table[row][column][piece_lookup[chess_board[row][column]]])
 
 	return zobrist
 
@@ -593,15 +603,21 @@ def zobrist_update(zorbist, move):
 #	h`= h xor z(source)xor z(source')xor z(destination)xor z(destination')xor z(side)xor z(side')
 
 	# Will get out bounds exception if empty. Put '.' for option 13
-		# get move source 
-		zobrist ^= zobrist_table[3][2][piece_lookup[chess_board[row][column]]]
-		# get move destination
-		zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
-		# side
-		if get_strNext == 'W':
-			zobrist ^= zobrist_white
-		else:
-			zobrist ^= zobrist_black
+		# get move source
+
+	start = move.split("-")[0]
+	finish = move.split("-")[1]
+	print("start: ", start, "finish: ", finish)
+
+	zobrist ^= zobrist_table[3][2][piece_lookup[chess_board[row][column]]]
+
+	# get move destination
+	zobrist ^= zobrist_table[row][column][piece_lookup[chess_board[row][column]]]
+	# side
+	if get_strNext == 'W':
+		zobrist ^= zobrist_white
+	else:
+		zobrist ^= zobrist_black
 
 	return zorbist
 
@@ -612,8 +628,6 @@ def chess_moveAlphabeta(intDepth, intDuration):
 	best = ''
 	alpha = -100000
 	beta = 100000
-#	alpha = -sys.maxint - 1
-#	beta = sys.maxint
 	temp = 0
 	timer = True
 
@@ -640,11 +654,8 @@ def chess_moveAlphabeta(intDepth, intDuration):
 			chess_undo()
 			
 			if (temp > alpha or not best):
-#				print("TEMP: ", temp, " moves_stack ", moves_stack)
 				best = move
 				alpha = temp
-#			if (temp < 0):
-#				print("Neg temp at ", move, " is ", temp)	
 			if (int(time.time() * 1000) >= move_limit):
 				timer = False
 				break
@@ -667,10 +678,7 @@ def alphabeta(intDepth, alpha, beta):
 		return chess_eval()
 
 	# load from transposition table
-	
 
-
-#	score = -sys.maxint - 1
 	score = -100000	
 
 	for move in chess_movesEvaluated():
@@ -681,10 +689,12 @@ def alphabeta(intDepth, alpha, beta):
 		alpha = max(alpha, score)
 		
 		if (alpha >= beta):
-#			print("found a breaking move ", alpha, " move ", move, " beta ", beta, " stack ", moves_stack)
 			break
 
 	# store in transposition table
+#	if (best <= alpha or best > beta):
+#	zobrist_update(zobrist_calculate(), move)
+	zobrist_calculate()
 
 	return score
 
