@@ -12,9 +12,7 @@ moves_stack = []
 transpositions = {}
 
 zobrist_key = None
-#zobrist = random.getrandbits(64)
-zobrist=14265310256587704851L
-zobrist=11111111111111111111L
+zobrist = random.getrandbits(64)
 zobrist_table = [None] * 6
 zobrist_black = random.getrandbits(64) 
 zobrist_white = random.getrandbits(64)
@@ -638,7 +636,6 @@ def chess_moveAlphabeta(intDepth, intDuration):
 		intDuration = 3000
 	
 	while (curDepth <= intDepth):
-#		print("cur: ", curDepth, "int: ", intDepth)
 		for move in chess_movesEvaluated():
 #			print("move:", move)
 			chess_move(move)
@@ -659,38 +656,39 @@ def chess_moveAlphabeta(intDepth, intDuration):
 		print("Depth: ", curDepth)
 
 
-	print("score", best)	
+	print("score", temp, " move ", best)	
 	chess_move(best)
 	return best
 	
 
 def alphabeta(intDepth, alpha, beta):
 	global zobrist_key
+	last_zobrist = zobrist_key
 	
-	if not zobrist_key:
-		zobrist_key = zobrist_calculate()
-
-	cur_zobrist = zobrist_key
-	for move in moves_stack:
-		cur_zobrist = zobrist_update(cur_zobrist, move[0])
-
+	#if not zobrist_key:
+	#	zobrist_key = zobrist_calculate()
+		
+	#zobrist_key = zobrist_update(zobrist_key, moves_stack[len(moves_stack)-1][0])
+	
+	#not really a zobrist_key
+	zobrist_key = chess_boardGet().split(' ')[1]
+	#print("table = ", zobrist_key)
 	if ((intDepth == 0) or (chess_winner() != '?')):
 		return chess_eval()
 
 	score = -100000	
 
         # get value from transposition table
-	#zobrist_key = zobrist_calculate()
-        if cur_zobrist in transpositions:
-                if transpositions[cur_zobrist][0][2] > intDepth:
+        if zobrist_key in transpositions:
+                if transpositions[zobrist_key][0][2] > intDepth:
                         print("Already in table")
-                        return transpositions[cur_zobrist][0][1]
+                        return transpositions[zobrist_key][0][1]
         tups = []
 	for move in chess_movesEvaluated():
 		chess_move(move)
-		score = max(score, -alphabeta(intDepth - 1, -beta, -alpha))
+		temp = -alphabeta(intDepth - 1, -beta, -alpha)
+		score = max(score, temp)
 		chess_undo()
-
 		alpha = max(alpha, score)
                 tups.append((move, score, intDepth))
 
@@ -698,7 +696,9 @@ def alphabeta(intDepth, alpha, beta):
 			break
 
 	# store in transposition table
-        transpositions[cur_zobrist] = sorted(tups, key=lambda x: x[1])
+        transpositions[zobrist_key] = sorted(tups, key=lambda x: x[1])
+	# last is for undo
+	#zobrist_key = last_zobrist
 
 	return score
 
@@ -748,14 +748,6 @@ def test():
 	zob3 = zobrist_update(zob, mover)
 	chess_move(mover)
 	zob2 = zobrist_calculate()
-	print(zob2, zob3, str(zob2==zob3))
-
-#	mover2 = 'c3-b1\n'
-#	zob3 = zobrist_update(zob, mover2)
-#	chess_move(mover2)
-#	zob2 = zobrist_calculate()
-#	print(zob2, zob3, str(zob2==zob3))
-	
 	print(zob2, zob3, str(zob2==zob3))
 	print("")
 
